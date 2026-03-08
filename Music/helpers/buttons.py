@@ -136,7 +136,7 @@ class MakeButtons:
                     self.ikb(text="⟲", callback_data=f"ctrl|bseek|{chat_id}"),
                     self.ikb(text="⦿", callback_data=f"ctrl|play|{chat_id}"),
                     self.ikb(text="⟳", callback_data=f"ctrl|fseek|{chat_id}"),
-                    self.ikb(text="⊡ End", callback_data=f"ctrl|end|{chat_id}"),
+                    self.ikb(text="⊡", callback_data=f"ctrl|end|{chat_id}"),
                 ],
                 [
                     self.ikb("❤️", callback_data=f"add_favorite|{video_id}"),
@@ -150,15 +150,12 @@ class MakeButtons:
             [
                 self.ikb(text="↻ Replay", callback_data=f"ctrl|replay|{chat_id}"),
                 self.ikb(text="∞ Loop", callback_data=f"ctrl|loop|{chat_id}"),
+                self.ikb(text="⊹ Skip", callback_data=f"ctrl|skip|{chat_id}"),
             ],
             [
                 self.ikb(text="⊝ Mute", callback_data=f"ctrl|mute|{chat_id}"),
                 self.ikb(text="⊜ Unmute", callback_data=f"ctrl|unmute|{chat_id}"),
-                self.ikb(text="⊹ Skip", callback_data=f"ctrl|skip|{chat_id}"),
-            ],
-            [
                 self.ikb(text="🔙", callback_data=f"player|{video_id}|{chat_id}"),
-                self.ikb(text="🗑", callback_data="close"),
             ],
         ]
         return buttons
