@@ -11,7 +11,7 @@ from .logger import LOGS
 class Database(object):
     def __init__(self):
         self.client = AsyncIOMotorClient(Config.DATABASE_URL)
-        self.db = self.client["HellMusicDB"]
+        self.db = self.client["Yukki"]
 
         # mongo db collections
         self.authchats = self.db.authchats
@@ -23,7 +23,7 @@ class Database(object):
         self.gban_db = self.db.gban_db
         self.songsdb = self.db.songsdb
         self.sudousers = self.db.sudousers
-        self.users = self.db.users
+        self.users = self.db.tgusersdb
 
         # local db collections
         self.active_vc = [{"chat_id": 0, "join_time": 0, "vc_type": "voice"}]
