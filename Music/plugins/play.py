@@ -162,7 +162,7 @@ async def playing(_, message: Message):
     que = Queue.get_current(chat_id)
     if not que:
         return await message.reply_text("Nothing is playing here.")
-    photo = thumb.generate((359), (297, 302), que["video_id"])
+    photo = thumb.generate(que["video_id"])
     btns = Buttons.player_markup(chat_id, que["video_id"], hellbot.app.username)
     to_send = TEXTS.PLAYING.format(
         hellbot.app.mention,
