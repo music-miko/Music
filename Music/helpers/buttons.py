@@ -132,6 +132,12 @@ class MakeButtons:
             ]
         else:
             buttons = [
+                 [
+                    self.ikb(text="⟲", callback_data=f"ctrl|bseek|{chat_id}"),
+                    self.ikb(text="⦿", callback_data=f"ctrl|play|{chat_id}"),
+                    self.ikb(text="⟳", callback_data=f"ctrl|fseek|{chat_id}"),
+                    self.ikb(text="⊡ End", callback_data=f"ctrl|end|{chat_id}"),
+                ],
                 [
                     self.ikb("❤️", callback_data=f"add_favorite|{video_id}"),
                     self.ikb("Controls", callback_data=f"controls|{video_id}|{chat_id}"),
@@ -142,12 +148,6 @@ class MakeButtons:
     def controls_markup(self, video_id, chat_id):
         buttons = [
             [
-                self.ikb(text="⟲", callback_data=f"ctrl|bseek|{chat_id}"),
-                self.ikb(text="⦿", callback_data=f"ctrl|play|{chat_id}"),
-                self.ikb(text="⟳", callback_data=f"ctrl|fseek|{chat_id}"),
-            ],
-            [
-                self.ikb(text="⊡ End", callback_data=f"ctrl|end|{chat_id}"),
                 self.ikb(text="↻ Replay", callback_data=f"ctrl|replay|{chat_id}"),
                 self.ikb(text="∞ Loop", callback_data=f"ctrl|loop|{chat_id}"),
             ],
