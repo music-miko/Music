@@ -69,7 +69,7 @@ class HellMusic:
     async def autoclean(self, file: str):
         try:
             os.remove(file)
-            os.remove(f"downloads/{file}.m4a")
+            os.remove(f"downloads/{file}.mp3")
             os.remove(f"downloads/{file}.mp4")
         except:
             pass
