@@ -212,4 +212,4 @@ class TEXTS:
         "» Enjoy the music and let us know if you have any suggestions for improvement.\n\n"
         "![🪶](5456327427795982532) @{2}"
     )
-    PERFORMER = "[ Team Arc ]"
+    PERFORMER = "Team Arc"
