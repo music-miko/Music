@@ -139,7 +139,7 @@ class MakeButtons:
                     self.ikb(text="⊡", callback_data=f"ctrl|end|{chat_id}"),
                 ],
                 [
-                    self.ikb("❤️", callback_data=f"add_favorite|{video_id}"),
+                    self.ikb("➕", callback_data=f"add_favorite|{video_id}"),
                     self.ikb("Controls", callback_data=f"controls|{video_id}|{chat_id}"),
                 ],
             ]
