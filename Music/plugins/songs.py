@@ -1,3 +1,4 @@
+import asyncio
 from pyrogram import filters
 from pyrogram.types import CallbackQuery, Message
 
@@ -7,6 +8,16 @@ from Music.core.decorators import UserWrapper, check_mode
 from Music.helpers.formatters import formatter
 from Music.utils.pages import MakePages
 from Music.utils.youtube import ytube
+
+
+# === BACKGROUND AUTO-DELETE TASK ===
+async def auto_delete_message(message: Message, delay: int):
+    """Wait for the specified delay (in seconds), then delete the message."""
+    await asyncio.sleep(delay)
+    try:
+        await message.delete()
+    except Exception:
+        pass
 
 
 @hellbot.app.on_message(filters.command("song") & ~Config.BANNED_USERS)
@@ -20,6 +31,11 @@ async def songs(_, message: Message):
         Config.BLACK_IMG, caption=f"<b><i>Searching</i></b> “`{query}`” ..."
     )
     all_tracks = await ytube.get_data(query, False, 10)
+    
+    # Safety check to prevent IndexError
+    if not all_tracks:
+        return await hell.edit_text("❌ **No results found for your query. Try searching with different keywords.**")
+        
     rand_key = formatter.gen_key(str(message.from_user.id), 5)
     Config.SONG_CACHE[rand_key] = all_tracks
     await MakePages.song_page(hell, rand_key, 0)
@@ -33,44 +49,40 @@ async def lyrics(_, message: Message):
         return await message.reply_text("Lyrics module is disabled!")
     lists = message.text.split(" ", 1)
     if not len(lists) == 2:
-        return await message.reply_text(
-            "__Nothing given to search.__ \nExample: `/lyrics loose yourself - eminem`"
-        )
-    _input_ = lists[1].strip()
-    query = _input_.split("-", 1)
-    if len(query) == 2:
-        song = query[0].strip()
-        artist = query[1].strip()
-    else:
-        song = query[0].strip()
-        artist = ""
-    text = f"**Searching lyrics ...** \n\n__Song:__ `{song}`"
-    if artist != "":
-        text += f"\n__Artist:__ `{artist}`"
-    hell = await message.reply_text(text)
-    results = await ytube.get_lyrics(song, artist)
-    if results:
-        title = results["title"]
-        image = results["image"]
-        lyrics = results["lyrics"]
-        final = f"<b><i>• Song:</b></i> <code>{title}</code> \n<b><i>• Lyrics:</b></i> \n<code>{lyrics}</code>"
-        if len(final) >= 4095:
-            page_name = f"{title}"
-            to_paste = f"<img src='{image}'/> \n{final} \n<img src='https://telegra.ph/file/2c546060b20dfd7c1ff2d.jpg'/>"
-            link = await formatter.telegraph_paste(page_name, to_paste)
-            await hell.edit_text(
-                f"**Lyrics too big! Get it from here:** \n\n• [{title}]({link})",
-                disable_web_page_preview=True,
-            )
-        else:
-            await hell.edit_text(final)
-        chat = message.chat.title or message.chat.first_name
-        await hellbot.logit(
-            "lyrics",
-            f"**⤷ Lyrics:** `{title}`\n**⤷ Chat:** {chat} [`{message.chat.id}`]\n**⤷ User:** {message.from_user.mention} [`{message.from_user.id}`]",
+        return await message.reply_text("Nothing given to search.")
+    query = lists[1]
+    hell = await message.reply_photo(
+        Config.BLACK_IMG, caption=f"<b><i>Searching</i></b> “`{query}`” ..."
+    )
+    all_tracks = await ytube.get_data(query, False, 1)
+    
+    # Safety check to prevent IndexError
+    if not all_tracks:
+        return await hell.edit_text("❌ **No results found for your query.**")
+        
+    track = all_tracks[0]
+    title = track["title"]
+    artist = track["channel"]
+    link = track["link"]
+    lyrics = ytube.get_lyrics(title, artist)
+    
+    if not lyrics:
+         return await hell.edit_text("❌ **Failed to fetch lyrics.**")
+
+    final = f"**⤷ Title:** `{lyrics['title']}`\n\n**⤷ Lyrics:**\n\n{lyrics['lyrics']}"
+    if len(final) > 4096:
+        final = final[:4090] + "..."
+        await hell.edit_text(
+            f"{final}\n\n**[Read Full Lyrics Here]({link})**",
+            disable_web_page_preview=True,
         )
     else:
-        await hell.edit_text("Unexpected Error Occured.")
+        await hell.edit_text(final)
+    chat = message.chat.title or message.chat.first_name
+    await hellbot.logit(
+        "lyrics",
+        f"**⤷ Lyrics:** `{title}`\n**⤷ Chat:** {chat} [`{message.chat.id}`]\n**⤷ User:** {message.from_user.mention} [`{message.from_user.id}`]",
+    )
 
 
 @hellbot.app.on_callback_query(filters.regex(r"song_dl(.*)$") & ~Config.BANNED_USERS)
@@ -81,23 +93,29 @@ async def song_cb(_, cb: CallbackQuery):
     if cb.from_user.id != int(user):
         await cb.answer("You are not allowed to do that!", show_alert=True)
         return
+        
     if action == "adl":
-        await ytube.send_song(cb, rand_key, key, False)
+        sent_msg = await ytube.send_song(cb, rand_key, key, False)
+        if sent_msg:
+            # Trigger background deletion after 300 seconds (5 minutes)
+            asyncio.create_task(auto_delete_message(sent_msg, 300))
         return
     elif action == "vdl":
-        await ytube.send_song(cb, rand_key, key, True)
+        sent_msg = await ytube.send_song(cb, rand_key, key, True)
+        if sent_msg:
+            # Trigger background deletion after 300 seconds (5 minutes)
+            asyncio.create_task(auto_delete_message(sent_msg, 300))
         return
     elif action == "close":
-        Config.SONG_CACHE.pop(rand_key)
+        Config.SONG_CACHE.pop(rand_key, None)
         await cb.message.delete()
         return
     else:
-        all_tracks = Config.SONG_CACHE[rand_key]
-        length = len(all_tracks)
-        if key == 0 and action == "prev":
-            key = length - 1
-        elif key == length - 1 and action == "next":
-            key = 0
-        else:
-            key = key + 1 if action == "next" else key - 1
-    await MakePages.song_page(cb, rand_key, key)
+        all_tracks = Config.SONG_CACHE.get(rand_key)
+        if not all_tracks:
+            return await cb.answer("Cache expired. Please search again.", show_alert=True)
+            
+        if action == "next":
+            await MakePages.song_page(cb.message, rand_key, key + 1)
+        elif action == "prev":
+            await MakePages.song_page(cb.message, rand_key, key - 1)
