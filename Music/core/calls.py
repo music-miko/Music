@@ -23,7 +23,6 @@ from Music.utils.exceptions import (
     UserException,
 )
 from Music.utils.queue import Queue
-from Music.utils.thumbnail import thumb
 from Music.utils.youtube import ytube
 
 from .clients import hellbot
@@ -210,38 +209,26 @@ class HellMusic:
             else:
                 input_stream = AudioPiped(to_stream, MediumQualityAudio())
             try:
-                photo = thumb.generate((359), (297, 302), video_id)
                 await self.get_client(int(chat_id)).change_stream(int(chat_id), input_stream)
                 btns = Buttons.player_markup(
                     chat_id,
                     "None" if video_id == "telegram" else video_id,
                     hellbot.app.username,
                 )
-                if photo:
-                    sent = await hellbot.app.send_photo(
-                        int(chat_id),
-                        photo,
-                        TEXTS.PLAYING.format(
-                            hellbot.app.mention,
-                            title,
-                            duration,
-                            user,
-                        ),
-                        reply_markup=InlineKeyboardMarkup(btns),
-                    )
-                    os.remove(photo)
-                else:
-                    sent = await hellbot.app.send_message(
-                        int(chat_id),
-                        TEXTS.PLAYING.format(
-                            hellbot.app.mention,
-                            title,
-                            duration,
-                            user,
-                        ),
-                        disable_web_page_preview=True,
-                        reply_markup=InlineKeyboardMarkup(btns),
-                    )
+                
+                # Directly send message without any photo
+                sent = await hellbot.app.send_message(
+                    int(chat_id),
+                    TEXTS.PLAYING.format(
+                        hellbot.app.mention,
+                        title,
+                        duration,
+                        user,
+                    ),
+                    disable_web_page_preview=True,
+                    reply_markup=InlineKeyboardMarkup(btns),
+                )
+                
                 previous = Config.PLAYER_CACHE.get(chat_id)
                 if previous:
                     try:
@@ -302,13 +289,13 @@ class HellMusic:
         await self.autoend(chat_id, user_ids)
 
     async def join_gc(self, chat_id: int):
-        assistant = hellbot.get_user(chat_id)
+        assistant = self.get_client(chat_id)
         if not assistant:
             raise UserException("[UserException]: No assistant sessions are running.")
             
         try:
             try:
-                get = await hellbot.app.get_chat_member(chat_id, assistant.id)
+                get = await hellbot.app.get_chat_member(chat_id, assistant.client.me.id)
             except ChatAdminRequired:
                 raise UserException(
                     f"[UserException]: Bot is not admin in chat {chat_id}"
@@ -324,7 +311,7 @@ class HellMusic:
             chat = await hellbot.app.get_chat(chat_id)
             if chat.username:
                 try:
-                    await assistant.join_chat(chat.username)
+                    await assistant.client.join_chat(chat.username)
                 except UserAlreadyParticipant:
                     pass
                 except Exception as e:
@@ -346,7 +333,7 @@ class HellMusic:
                     )
                     if link.startswith("https://t.me/+"):
                         link = link.replace("https://t.me/+", "https://t.me/joinchat/")
-                    await assistant.join_chat(link)
+                    await assistant.client.join_chat(link)
                     await hell.edit_text("Assistant joined the chat! Enjoy your music!")
                 except UserAlreadyParticipant:
                     pass
