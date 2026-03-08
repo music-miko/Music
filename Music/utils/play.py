@@ -12,7 +12,6 @@ from Music.helpers.buttons import Buttons
 from Music.helpers.strings import TEXTS
 
 from .queue import Queue
-from .thumbnail import thumb
 from .youtube import ytube
 
 
@@ -92,7 +91,6 @@ class Player:
             force,
         )
         if position == 0:
-            photo = thumb.generate(video_id)
             try:
                 await hellmusic.join_vc(
                     chat_id, file_path, True if vc_type == "video" else False
@@ -102,33 +100,19 @@ class Player:
                 await message.reply_text(str(e))
                 Queue.clear_queue(chat_id)
                 os.remove(file_path)
-                os.remove(photo)
                 return
             btns = Buttons.player_markup(chat_id, video_id, hellbot.app.username)
-            if photo:
-                sent = await hellbot.app.send_photo(
-                    chat_id,
-                    photo,
-                    TEXTS.PLAYING.format(
-                        hellbot.app.mention,
-                        title,
-                        duration,
-                        user,
-                    ),
-                    reply_markup=InlineKeyboardMarkup(btns),
-                )
-                os.remove(photo)
-            else:
-                sent = await hellbot.app.send_message(
-                    chat_id,
-                    TEXTS.PLAYING.format(
-                        hellbot.app.mention,
-                        title,
-                        duration,
-                        user,
-                    ),
-                    reply_markup=InlineKeyboardMarkup(btns),
-                )
+            sent = await hellbot.app.send_message(
+                chat_id,
+                TEXTS.PLAYING.format(
+                    hellbot.app.mention,
+                    title,
+                    duration,
+                    user,
+                ),
+                disable_web_page_preview=True,
+                reply_markup=InlineKeyboardMarkup(btns),
+            )
             previous = Config.PLAYER_CACHE.get(chat_id)
             if previous:
                 try:
@@ -145,6 +129,7 @@ class Player:
                     duration,
                     user,
                 ),
+                disable_web_page_preview=True,
                 reply_markup=InlineKeyboardMarkup(Buttons.close_markup()),
             )
             prev_q = Config.QUEUE_CACHE.get(chat_id)
@@ -174,7 +159,6 @@ class Player:
         if not que:
             return await message.edit_text("Nothing is playing to replay")
         video = True if que["vc_type"] == "video" else False
-        photo = thumb.generate(que["video_id"])
         if que["file"] == que["video_id"]:
             file_path = await ytube.download(que["video_id"], True, video)
         else:
@@ -186,33 +170,19 @@ class Player:
             await message.reply_text(str(e))
             Queue.clear_queue(chat_id)
             os.remove(que["file"])
-            os.remove(photo)
             return
         btns = Buttons.player_markup(chat_id, que["video_id"], hellbot.app.username)
-        if photo:
-            sent = await hellbot.app.send_photo(
-                chat_id,
-                photo,
-                TEXTS.PLAYING.format(
-                    hellbot.app.mention,
-                    que["title"],
-                    que["duration"],
-                    que["user"],
-                ),
-                reply_markup=InlineKeyboardMarkup(btns),
-            )
-            os.remove(photo)
-        else:
-            sent = await hellbot.app.send_message(
-                chat_id,
-                TEXTS.PLAYING.format(
-                    hellbot.app.mention,
-                    que["title"],
-                    que["duration"],
-                    que["user"],
-                ),
-                reply_markup=InlineKeyboardMarkup(btns),
-            )
+        sent = await hellbot.app.send_message(
+            chat_id,
+            TEXTS.PLAYING.format(
+                hellbot.app.mention,
+                que["title"],
+                que["duration"],
+                que["user"],
+            ),
+            disable_web_page_preview=True,
+            reply_markup=InlineKeyboardMarkup(btns),
+        )
         previous = Config.PLAYER_CACHE.get(chat_id)
         if previous:
             try:
@@ -250,41 +220,26 @@ class Player:
                         False,
                     )
                     try:
-                        photo = thumb.generate(data["id"])
                         await hellmusic.join_vc(message.chat.id, file_path, video)
                     except Exception as e:
                         await message.edit_text(str(e))
                         Queue.clear_queue(message.chat.id)
                         os.remove(file_path)
-                        os.remove(photo)
                         return
                     btns = Buttons.player_markup(
                         message.chat.id, data["id"], hellbot.app.username
                     )
-                    if photo:
-                        sent = await hellbot.app.send_photo(
-                            message.chat.id,
-                            photo,
-                            TEXTS.PLAYING.format(
-                                hellbot.app.mention,
-                                data["title"],
-                                data["duration"],
-                                user_mention,
-                            ),
-                            reply_markup=InlineKeyboardMarkup(btns),
-                        )
-                        os.remove(photo)
-                    else:
-                        sent = await hellbot.app.send_message(
-                            message.chat.id,
-                            TEXTS.PLAYING.format(
-                                hellbot.app.mention,
-                                data["title"],
-                                data["duration"],
-                                user_mention,
-                            ),
-                            reply_markup=InlineKeyboardMarkup(btns),
-                        )
+                    sent = await hellbot.app.send_message(
+                        message.chat.id,
+                        TEXTS.PLAYING.format(
+                            hellbot.app.mention,
+                            data["title"],
+                            data["duration"],
+                            user_mention,
+                        ),
+                        disable_web_page_preview=True,
+                        reply_markup=InlineKeyboardMarkup(btns),
+                    )
                     old = Config.PLAYER_CACHE.get(message.chat.id)
                     if old:
                         try:
