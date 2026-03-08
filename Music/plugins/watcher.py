@@ -79,8 +79,6 @@ for music in hellmusic.musics:
     @music.on_stream_end()
     async def changed(_, update: Update):
         if isinstance(update, StreamAudioEnded):
-            # Reset the inactivity timer on song change
-            hellmusic.chat_leave_timer[update.chat_id] = datetime.datetime.now()
             await hellmusic.change_vc(update.chat_id)
 
     @music.on_participants_change()
@@ -91,10 +89,6 @@ for music in hellmusic.musics:
             return
         try:
             chat_id = update.chat_id
-            
-            # Reset inactivity timer because there is user movement
-            hellmusic.chat_leave_timer[chat_id] = datetime.datetime.now()
-            
             audience = hellmusic.audience.get(chat_id)
             users = await hellmusic.vc_participants(chat_id)
             user_ids = [user.user_id for user in users]
@@ -131,11 +125,12 @@ async def update_played():
 asyncio.create_task(update_played())
 
 
+# Restored `end_inactive_vc` task
 async def end_inactive_vc():
     while not await asyncio.sleep(10):
-        for chat_id in db.inactive:
+        for chat_id in list(db.inactive.keys()):
             dur = db.inactive.get(chat_id)
-            if dur == {}:
+            if not dur or dur == {}:
                 continue
             if datetime.datetime.now() > dur:
                 if not await db.is_active_vc(chat_id):
@@ -157,56 +152,43 @@ async def end_inactive_vc():
 asyncio.create_task(end_inactive_vc())
 
 
-async def auto_leave_chats():
-    while not await asyncio.sleep(60): # Sweeps every 60 seconds
-        now = datetime.datetime.now()
-        
-        # Fetch active chats directly from DB to monitor
-        active_chats = await db.get_active_vc()
-        for x in active_chats:
-            chat_id = int(x["chat_id"])
-            if chat_id == 0:
-                continue
-                
-            # Initialize timer if we don't have it tracked yet
-            if chat_id not in hellmusic.chat_leave_timer:
-                hellmusic.chat_leave_timer[chat_id] = now
-                continue
-                
-            last_active = hellmusic.chat_leave_timer[chat_id]
-            
-            # If 4 hours have passed, perform a hard check
-            if now > last_active + datetime.timedelta(hours=4):
-                is_paused = await db.get_watcher(chat_id, "pause")
-                
-                try:
-                    users = await hellmusic.vc_participants(chat_id)
-                    assistant_ids = [u.id for u in hellbot.users]
-                    # Filter out all assistant accounts from the listener count
-                    listeners = [u for u in users if u.user_id not in assistant_ids]
-                    is_empty = len(listeners) == 0
-                except:
-                    is_empty = True
-                    
-                # "Inactive" strictly means the music is paused OR the bot is alone
-                if is_paused or is_empty:
-                    try:
-                        await hellmusic.leave_vc(chat_id)
-                        assistant = hellbot.get_user(chat_id)
-                        if assistant:
-                            await assistant.leave_chat(chat_id)
-                        try:
-                            await hellbot.app.send_message(
-                                chat_id,
-                                "👋 The assistant left the chat due to 4 hours of inactivity to save resources."
-                            )
-                        except: pass
-                    except Exception: pass
-                    
-                    if chat_id in hellmusic.chat_leave_timer:
-                        del hellmusic.chat_leave_timer[chat_id]
-                else:
-                    # Music is actively playing with listeners present, so it shouldn't leave. Reset timer.
-                    hellmusic.chat_leave_timer[chat_id] = now
+# ==========================================
+# SCHEDULED MORNING SWEEP (4:35 AM)
+# ==========================================
 
-asyncio.create_task(auto_leave_chats())
+async def morning_inactive_sweep():
+    """Fetches inactive chats from db and blindly leaves them at 4:35 AM"""
+    inactive_chats = list(db.inactive.keys())
+    
+    for chat_id in inactive_chats:
+        try:
+            # Blindly force leave the Voice Chat
+            await hellmusic.leave_vc(chat_id)
+            
+            # Remove from DB dictionary
+            db.inactive.pop(chat_id, None)
+            
+            # EXCEPTION: Never leave the Logger Chat
+            if str(chat_id) == str(Config.LOGGER_ID):
+                continue
+            
+            # Make the assistant user account leave the group entirely
+            assistant = hellbot.get_user(chat_id)
+            if assistant:
+                await assistant.leave_chat(chat_id)
+                
+            try:
+                await hellbot.app.send_message(
+                    chat_id,
+                    "🌅 **Morning Sweep:** Left the chat to clear inactive resources."
+                )
+            except:
+                pass
+        except Exception:
+            pass
+
+# Initialize and start APScheduler
+scheduler = AsyncIOScheduler()
+# Set to run exactly at 04:35 AM server time daily
+scheduler.add_job(morning_inactive_sweep, "cron", hour=4, minute=35)
+scheduler.start()
