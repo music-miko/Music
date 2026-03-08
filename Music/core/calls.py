@@ -60,7 +60,7 @@ class HellMusic(PyTgCalls):
         # dirty way. but works :)
         try:
             os.remove(file)
-            os.remove(f"downloads/{file}.webm")
+            os.remove(f"downloads/{file}.m4a")
             os.remove(f"downloads/{file}.mp4")
         except:
             pass
