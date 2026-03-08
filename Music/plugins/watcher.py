@@ -150,22 +150,3 @@ async def end_inactive_vc():
 
 
 asyncio.create_task(end_inactive_vc())
-
-
-async def leaderboard():
-    context = {
-        "mention": hellbot.app.mention,
-        "username": hellbot.app.username,
-        "client": hellbot.app,
-    }
-    text = await leaders.generate(context)
-    btns = Buttons.close_markup()
-    await leaders.broadcast(hellbot, text, btns)
-
-
-hrs = leaders.get_hrs()
-min = leaders.get_min()
-
-scheduler = AsyncIOScheduler()
-scheduler.add_job(leaderboard, "cron", hour=hrs, minute=min, timezone=Config.TZ)
-scheduler.start()
