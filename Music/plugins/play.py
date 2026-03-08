@@ -14,7 +14,6 @@ from Music.helpers.strings import TEXTS
 from Music.utils.pages import MakePages
 from Music.utils.play import player
 from Music.utils.queue import Queue
-from Music.utils.thumbnail import thumb
 from Music.utils.youtube import ytube
 
 
@@ -162,7 +161,7 @@ async def playing(_, message: Message):
     que = Queue.get_current(chat_id)
     if not que:
         return await message.reply_text("Nothing is playing here.")
-    photo = thumb.generate(que["video_id"])
+        
     btns = Buttons.player_markup(chat_id, que["video_id"], hellbot.app.username)
     to_send = TEXTS.PLAYING.format(
         hellbot.app.mention,
@@ -170,14 +169,13 @@ async def playing(_, message: Message):
         que["duration"],
         que["user"],
     )
-    if photo:
-        sent = await message.reply_photo(
-            photo, caption=to_send, reply_markup=InlineKeyboardMarkup(btns)
-        )
-    else:
-        sent = await message.reply_text(
-            to_send, reply_markup=InlineKeyboardMarkup(btns)
-        )
+    
+    sent = await message.reply_text(
+        to_send, 
+        disable_web_page_preview=True, 
+        reply_markup=InlineKeyboardMarkup(btns)
+    )
+    
     previous = Config.PLAYER_CACHE.get(chat_id)
     if previous:
         try:
