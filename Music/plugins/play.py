@@ -102,6 +102,8 @@ async def play_music(_, message: Message, context: dict):
         if "playlist" in url:
             await hell.edit("Processing the playlist ...")
             song_list = await ytube.get_playlist(url)
+            if not song_list:
+                return await hell.edit("❌ **No results found for your query. Try searching with different keywords. Failed to process query.**")
             random.shuffle(song_list)
             context = {
                 "user_id": message.from_user.id,
@@ -113,7 +115,11 @@ async def play_music(_, message: Message, context: dict):
             await hell.edit("Searching ...")
             result = await ytube.get_data(url, False)
         except Exception as e:
-            return await hell.edit(f"**Error:**\n`{e}`")
+            return await hell.edit(f"❌ **API search failed:**\n`{e}`")
+            
+        if not result:
+            return await hell.edit("❌ **No results found for your query. Try searching with different keywords. Failed to process query.**")
+            
         context = {
             "chat_id": message.chat.id,
             "user_id": message.from_user.id,
@@ -134,7 +140,11 @@ async def play_music(_, message: Message, context: dict):
         await hell.edit("Searching ...")
         result = await ytube.get_data(query, False)
     except Exception as e:
-        return await hell.edit(f"**Error:**\n`{e}`")
+        return await hell.edit(f"❌ **API search failed:**\n`{e}`")
+        
+    if not result:
+        return await hell.edit("❌ **No results found for your query. Try searching with different keywords. Failed to process query.**")
+        
     context = {
         "chat_id": message.chat.id,
         "user_id": message.from_user.id,
