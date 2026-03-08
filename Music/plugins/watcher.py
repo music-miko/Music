@@ -198,7 +198,7 @@ async def auto_leave_chats():
                         try:
                             await hellbot.app.send_message(
                                 chat_id,
-                                "👋 **Auto Leave:** The assistant left the chat due to 4 hours of inactivity to save resources."
+                                "👋 The assistant left the chat due to 4 hours of inactivity to save resources."
                             )
                         except: pass
                     except Exception: pass
