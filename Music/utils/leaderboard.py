@@ -35,8 +35,10 @@ class Leaderboard:
         all_guys = []
         async for user in users:
             id = int(user["user_id"])
-            songs = int(user["songs_played"])
-            user_name = user["user_name"]
+            # Safely fetch the songs played, default to 0
+            songs = int(user.get("songs_played", 0))
+            # Safely fetch the user name just in case
+            user_name = user.get("user_name", "Unknown")
             context = {"id": id, "songs": songs, "user": user_name}
             all_guys.append(context)
         all_guys = sorted(all_guys, key=lambda x: x["songs"], reverse=True)
@@ -100,6 +102,5 @@ class Leaderboard:
             return 2, f"{chat} -:- chat id invalid\n"
         except Exception:
             return 3, f"{chat} -:- {traceback.format_exc()}\n"
-
 
 leaders = Leaderboard()
