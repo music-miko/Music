@@ -62,6 +62,8 @@ class Player:
         ) = context.values()
         if force:
             await hellmusic.leave_vc(chat_id, True)
+            
+        file_path = None
         if video_id == "telegram":
             file_path = file
         else:
@@ -74,11 +76,14 @@ class Player:
                     video_id, True, True if vc_type == "video" else False
                 )
             except Exception as e:
+                # Custom, safe API download failed message
+                error_msg = "❌ **API download failed. Please try again!**"
                 if edit:
-                    await message.edit_text(str(e))
+                    await message.edit_text(error_msg)
                 else:
-                    await message.reply_text(str(e))
+                    await message.reply_text(error_msg)
                 return
+                
         position = Queue.put_queue(
             chat_id,
             user_id,
@@ -97,10 +102,13 @@ class Player:
                 )
             except Exception as e:
                 await message.delete()
-                await message.reply_text(str(e))
+                await message.reply_text(f"❌ **Failed to join Voice Chat:**\n`{str(e)}`")
                 Queue.clear_queue(chat_id)
-                os.remove(file_path)
+                # Safe checking before removal
+                if file_path and os.path.exists(file_path):
+                    os.remove(file_path)
                 return
+                
             btns = Buttons.player_markup(chat_id, video_id, hellbot.app.username)
             sent = await hellbot.app.send_message(
                 chat_id,
@@ -140,6 +148,7 @@ class Player:
                     pass
             Config.QUEUE_CACHE[chat_id] = sent
             return await message.delete()
+            
         await message.delete()
         await db.update_songs_count(1)
         await db.update_user(user_id, "songs_played", 1)
@@ -159,18 +168,28 @@ class Player:
         if not que:
             return await message.edit_text("Nothing is playing to replay")
         video = True if que["vc_type"] == "video" else False
+        
+        file_path = None
         if que["file"] == que["video_id"]:
-            file_path = await ytube.download(que["video_id"], True, video)
+            try:
+                file_path = await ytube.download(que["video_id"], True, video)
+            except Exception:
+                await message.delete()
+                await message.reply_text("❌ **API download failed. Please try again!**")
+                return
         else:
             file_path = que["file"]
+            
         try:
             await hellmusic.replay_vc(chat_id, file_path, video)
         except Exception as e:
             await message.delete()
-            await message.reply_text(str(e))
+            await message.reply_text(f"❌ **Failed to replay track:**\n`{str(e)}`")
             Queue.clear_queue(chat_id)
-            os.remove(que["file"])
+            if que["file"] and os.path.exists(que["file"]):
+                os.remove(que["file"])
             return
+            
         btns = Buttons.player_markup(chat_id, que["video_id"], hellbot.app.username)
         sent = await hellbot.app.send_message(
             chat_id,
@@ -207,7 +226,12 @@ class Player:
             try:
                 data = (await ytube.get_data(i, True, 1))[0]
                 if count == 0 and previously == 0:
-                    file_path = await ytube.download(data["id"], True, video)
+                    try:
+                        file_path = await ytube.download(data["id"], True, video)
+                    except Exception:
+                        await message.edit_text("❌ **API download failed for playlist track. Please try again!**")
+                        return
+                        
                     _queue = Queue.put_queue(
                         message.chat.id,
                         user_id,
@@ -222,10 +246,12 @@ class Player:
                     try:
                         await hellmusic.join_vc(message.chat.id, file_path, video)
                     except Exception as e:
-                        await message.edit_text(str(e))
+                        await message.edit_text(f"❌ **Failed to join Voice Chat:**\n`{str(e)}`")
                         Queue.clear_queue(message.chat.id)
-                        os.remove(file_path)
+                        if file_path and os.path.exists(file_path):
+                            os.remove(file_path)
                         return
+                        
                     btns = Buttons.player_markup(
                         message.chat.id, data["id"], hellbot.app.username
                     )
