@@ -43,6 +43,6 @@ urllib3==2.0.3
 websockets==11.0.3
 yarl==1.9.2
 youtube-search-python==1.6.6
-Pyrogram @ git+https://github.com/pyrogram/pyrogram.git
-TgCrypto
+https://github.com/KurimuzonAkuma/pyrogram/archive/v2.1.23.zip
 yt-dlp @ git+https://github.com/HellBoy-OP/yt-dp-fork.git@af1fd12f675220df6793fc019dff320bc76e8080
+
