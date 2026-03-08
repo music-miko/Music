@@ -433,7 +433,7 @@ class YouTube:
                 pass
 
             if not video:
-                await message.message.reply_audio(
+                sent_msg = await message.message.reply_audio(
                     audio=output,
                     caption=TEXTS.SONG_CAPTION.format(
                         track["title"],
@@ -448,7 +448,7 @@ class YouTube:
                     title=track["title"],
                 )
             else:
-                await message.message.reply_video(
+                sent_msg = await message.message.reply_video(
                     video=output,
                     caption=TEXTS.SONG_CAPTION.format(
                         track["title"],
@@ -475,7 +475,9 @@ class YouTube:
             if output and os.path.exists(output): os.remove(output)
         except Exception:
             pass
-
+            
+        return sent_msg
+    
     def get_lyrics(self, song: str, artist: str) -> dict:
         context = {}
         if not self.client:
