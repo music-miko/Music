@@ -24,7 +24,7 @@ class Config(object):
     API_URL = getenv("API_URL", "https://api.deadlinetech.site")                  # Your custom API base URL
 
     # optional config variables
-    BLACK_IMG = getenv("BLACK_IMG", "https://telegra.ph/file/2c546060b20dfd7c1ff2d.jpg")        # black image for progress
+    BLACK_IMG = getenv("BLACK_IMG", "https://graph.org/file/d7204bb54382e6906f212-4cd99af24b3a2a2c2a.jpg")        # black image for progress
     BOT_NAME = getenv("BOT_NAME", "Spotify Music")   # dont put fancy texts here.
     BOT_PIC = getenv("BOT_PIC", "https://graph.org/file/334e4452b8780a2a4fac4-79464e815bbbbed137.jpg")           # put direct link to image here
     LEADERBOARD_TIME = getenv("LEADERBOARD_TIME", "3:00")   # time in 24hr format for leaderboard broadcast
