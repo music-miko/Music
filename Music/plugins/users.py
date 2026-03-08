@@ -29,8 +29,9 @@ async def user_profile(_, message: Message):
     context = {
         "id": message.from_user.id,
         "mention": message.from_user.mention,
-        "songs_played": user["songs_played"],
-        "join_date": user["join_date"],
+        # Safely fetch songs_played and join_date to prevent KeyErrors
+        "songs_played": user.get("songs_played", 0),
+        "join_date": user.get("join_date", "Unknown"),
         "user_type": await get_user_type(message.chat.id, message.from_user.id),
     }
     await message.reply_text(
@@ -79,12 +80,11 @@ async def topusers(_, message: Message):
     context = {
         "mention": hellbot.app.mention,
         "username": hellbot.app.username,
-        "client": hellbot.app,
+        "client": hellbot,
     }
     text = await leaders.generate(context)
-    btns = Buttons.close_markup()
     await hell.edit_text(
         text,
+        reply_markup=InlineKeyboardMarkup(Buttons.close_markup()),
         disable_web_page_preview=True,
-        reply_markup=InlineKeyboardMarkup(btns),
     )
