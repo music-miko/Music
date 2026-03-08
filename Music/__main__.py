@@ -11,7 +11,7 @@ from Music.version import __version__
 
 
 async def start_bot():
-    hmusic_version = __version__["Hell Music"]
+    hmusic_version = __version__["Arc Music"]
     py_version = __version__["Python"]
     pyro_version = __version__["Pyrogram"]
     pycalls_version = __version__["PyTgCalls"]
