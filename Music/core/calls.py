@@ -39,17 +39,28 @@ async def __clean__(chat_id: int, force: bool):
     await db.remove_active_vc(chat_id)
 
 
-class HellMusic(PyTgCalls):
+class HellMusic:
     def __init__(self):
-        self.music = PyTgCalls(hellbot.user)
+        # Create a PyTgCalls instance for every active assistant
+        self.musics = [PyTgCalls(user) for user in hellbot.users]
         self.audience = {}
+        # Tracks chat activity for the 4hr auto-leave rule
+        self.chat_leave_timer = {}
+
+    def get_client(self, chat_id: int):
+        """Deterministically assigns one of the active PyTgCalls assistants to a chat."""
+        if not self.musics:
+            return None
+        return self.musics[abs(chat_id) % len(self.musics)]
 
     async def autoend(self, chat_id: int, users: list):
+        # This acts as the "Strict 5-minute Autoend" if explicitly toggled ON by an admin
         autoend = await db.get_autoend()
         if autoend:
             if len(users) == 1:
                 get = await hellbot.app.get_users(users[0])
-                if get.id == hellbot.user.id:
+                assistant_ids = [u.id for u in hellbot.users]
+                if get.id in assistant_ids:
                     db.inactive[chat_id] = datetime.datetime.now() + datetime.timedelta(
                         minutes=5
                     )
@@ -57,7 +68,6 @@ class HellMusic(PyTgCalls):
                 db.inactive[chat_id] = {}
 
     async def autoclean(self, file: str):
-        # dirty way. but works :)
         try:
             os.remove(file)
             os.remove(f"downloads/{file}.m4a")
@@ -67,12 +77,13 @@ class HellMusic(PyTgCalls):
 
     async def start(self):
         LOGS.info(
-            "\x3e\x3e\x20\x42\x6f\x6f\x74\x69\x6e\x67\x20\x50\x79\x54\x67\x43\x61\x6c\x6c\x73\x20\x43\x6c\x69\x65\x6e\x74\x2e\x2e\x2e"
+            "\x3e\x3e\x20\x42\x6f\x6f\x74\x69\x6e\x67\x20\x50\x79\x54\x67\x43\x61\x6c\x6c\x73\x20\x43\x6c\x69\x65\x6e\x74\x73\x2e\x2e\x2e"
         )
-        if Config.HELLBOT_SESSION:
-            await self.music.start()
+        if self.musics:
+            for music in self.musics:
+                await music.start()
             LOGS.info(
-                "\x3e\x3e\x20\x42\x6f\x6f\x74\x65\x64\x20\x50\x79\x54\x67\x43\x61\x6c\x6c\x73\x20\x43\x6c\x69\x65\x6e\x74\x21"
+                "\x3e\x3e\x20\x42\x6f\x6f\x74\x65\x64\x20\x50\x79\x54\x67\x43\x61\x6c\x6c\x73\x20\x43\x6c\x69\x65\x6e\x74\x73\x21"
             )
         else:
             LOGS.error(
@@ -81,29 +92,32 @@ class HellMusic(PyTgCalls):
             quit(1)
 
     async def ping(self):
-        pinged = await self.music.ping
-        return pinged
+        # Ping all assistants and return True if at least one is alive
+        for music in self.musics:
+            if await music.ping:
+                return True
+        return False
 
     async def vc_participants(self, chat_id: int):
-        users = await self.music.get_participants(chat_id)
+        users = await self.get_client(chat_id).get_participants(chat_id)
         return users
 
     async def mute_vc(self, chat_id: int):
-        await self.music.mute_stream(chat_id)
+        await self.get_client(chat_id).mute_stream(chat_id)
 
     async def unmute_vc(self, chat_id: int):
-        await self.music.unmute_stream(chat_id)
+        await self.get_client(chat_id).unmute_stream(chat_id)
 
     async def pause_vc(self, chat_id: int):
-        await self.music.pause_stream(chat_id)
+        await self.get_client(chat_id).pause_stream(chat_id)
 
     async def resume_vc(self, chat_id: int):
-        await self.music.resume_stream(chat_id)
+        await self.get_client(chat_id).resume_stream(chat_id)
 
     async def leave_vc(self, chat_id: int, force: bool = False):
         try:
             await __clean__(chat_id, force)
-            await self.music.leave_group_call(chat_id)
+            await self.get_client(chat_id).leave_group_call(chat_id)
         except:
             pass
         previous = Config.PLAYER_CACHE.get(chat_id)
@@ -128,7 +142,7 @@ class HellMusic(PyTgCalls):
                 MediumQualityAudio(),
                 additional_ffmpeg_parameters=f"-ss {to_seek} -to {duration}",
             )
-        await self.music.change_stream(chat_id, input_stream)
+        await self.get_client(chat_id).change_stream(chat_id, input_stream)
 
     async def invited_vc(self, chat_id: int):
         try:
@@ -145,9 +159,12 @@ class HellMusic(PyTgCalls):
             )
         else:
             input_stream = AudioPiped(file_path, MediumQualityAudio())
-        await self.music.change_stream(chat_id, input_stream)
+        await self.get_client(chat_id).change_stream(chat_id, input_stream)
 
     async def change_vc(self, chat_id: int):
+        # Reset Auto-Leave Timer globally
+        self.chat_leave_timer[chat_id] = datetime.datetime.now()
+        
         try:
             get = Queue.get_queue(chat_id)
             if get == []:
@@ -164,6 +181,7 @@ class HellMusic(PyTgCalls):
         get = Queue.get_queue(chat_id)
         if get == []:
             return await self.leave_vc(chat_id)
+        
         chat_id = get[0]["chat_id"]
         duration = get[0]["duration"]
         queue = get[0]["file"]
@@ -171,10 +189,12 @@ class HellMusic(PyTgCalls):
         user_id = get[0]["user_id"]
         vc_type = get[0]["vc_type"]
         video_id = get[0]["video_id"]
+        
         try:
             user = (await hellbot.app.get_users(user_id)).mention(style="md")
         except:
             user = get[0]["user"]
+            
         if queue:
             tg = True if video_id == "telegram" else False
             if tg:
@@ -191,7 +211,7 @@ class HellMusic(PyTgCalls):
                 input_stream = AudioPiped(to_stream, MediumQualityAudio())
             try:
                 photo = thumb.generate((359), (297, 302), video_id)
-                await self.music.change_stream(int(chat_id), input_stream)
+                await self.get_client(int(chat_id)).change_stream(int(chat_id), input_stream)
                 btns = Buttons.player_markup(
                     chat_id,
                     "None" if video_id == "telegram" else video_id,
@@ -240,7 +260,9 @@ class HellMusic(PyTgCalls):
                 raise ChangeVCException(f"[ChangeVCException]: {e}")
 
     async def join_vc(self, chat_id: int, file_path: str, video: bool = False):
-        # define input stream
+        # Reset Auto-Leave Timer globally
+        self.chat_leave_timer[chat_id] = datetime.datetime.now()
+        
         if video:
             input_stream = AudioVideoPiped(
                 file_path, MediumQualityAudio(), MediumQualityVideo()
@@ -248,9 +270,9 @@ class HellMusic(PyTgCalls):
         else:
             input_stream = AudioPiped(file_path, MediumQualityAudio())
 
-        # join vc
+        client = self.get_client(chat_id)
         try:
-            await self.music.join_group_call(
+            await client.join_group_call(
                 chat_id, input_stream, stream_type=StreamType().pulse_stream
             )
         except NoActiveGroupCall:
@@ -260,7 +282,7 @@ class HellMusic(PyTgCalls):
                 await self.leave_vc(chat_id)
                 raise JoinGCException(e)
             try:
-                await self.music.join_group_call(
+                await client.join_group_call(
                     chat_id, input_stream, stream_type=StreamType().pulse_stream
                 )
             except Exception as e:
@@ -280,9 +302,13 @@ class HellMusic(PyTgCalls):
         await self.autoend(chat_id, user_ids)
 
     async def join_gc(self, chat_id: int):
+        assistant = hellbot.get_user(chat_id)
+        if not assistant:
+            raise UserException("[UserException]: No assistant sessions are running.")
+            
         try:
             try:
-                get = await hellbot.app.get_chat_member(chat_id, hellbot.user.id)
+                get = await hellbot.app.get_chat_member(chat_id, assistant.id)
             except ChatAdminRequired:
                 raise UserException(
                     f"[UserException]: Bot is not admin in chat {chat_id}"
@@ -298,7 +324,7 @@ class HellMusic(PyTgCalls):
             chat = await hellbot.app.get_chat(chat_id)
             if chat.username:
                 try:
-                    await hellbot.user.join_chat(chat.username)
+                    await assistant.join_chat(chat.username)
                 except UserAlreadyParticipant:
                     pass
                 except Exception as e:
@@ -320,12 +346,11 @@ class HellMusic(PyTgCalls):
                     )
                     if link.startswith("https://t.me/+"):
                         link = link.replace("https://t.me/+", "https://t.me/joinchat/")
-                    await hellbot.user.join_chat(link)
+                    await assistant.join_chat(link)
                     await hell.edit_text("Assistant joined the chat! Enjoy your music!")
                 except UserAlreadyParticipant:
                     pass
                 except Exception as e:
                     raise UserException(f"[UserException]: {e}")
-
 
 hellmusic = HellMusic()
