@@ -164,7 +164,7 @@ async def v2_download_process(link: str, video: bool) -> Optional[str]:
     vid = extract_safe_id(link) or link 
     file_id = extract_safe_id(link) or uuid.uuid4().hex[:10]
     
-    # === MP3 UPDATE: Replaced .m4a with .mp3 ===
+    # MP3 update
     ext = "mp4" if video else "mp3"
     out_path = Path("downloads") / f"{file_id}.{ext}"
 
@@ -334,6 +334,11 @@ class YouTube:
         collection = []
         is_url = link.startswith("http")
         
+        # SECURITY CHECK: If it's a URL, scan it before processing
+        if is_url and not is_safe_url(link):
+            LOGS.warning(f"Blocked unsafe search URL: {link}")
+            return []
+        
         if not video_id and not is_url:
             scraped_data = await self.youtube_search_scrape(link)
             if scraped_data:
@@ -382,6 +387,11 @@ class YouTube:
         return []
 
     async def get_playlist(self, link: str) -> list:
+        # SECURITY CHECK: Block bad URLs before yt-dlp touches them
+        if not is_safe_url(link):
+            LOGS.warning(f"Blocked unsafe playlist URL: {link}")
+            return []
+            
         yt_url = await self.format_link(link, False)
         loop = asyncio.get_event_loop()
         try:
