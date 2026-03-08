@@ -72,7 +72,9 @@ class Database(object):
     async def update_user(self, user_id: int, key: str, value):
         if key == "songs_played":
             prev = await self.users.find_one({"user_id": user_id})
-            value = prev[key] + value
+            if prev:
+                # Safely get the previous value, default to 0 if it doesn't exist
+                value = prev.get(key, 0) + value
         await self.users.update_one({"user_id": user_id}, {"$set": {key: value}})
 
     # chat db #
@@ -354,6 +356,5 @@ class Database(object):
         await self.songsdb.update_one(
             {"songs": "songs"}, {"$set": {"count": songs}}, upsert=True
         )
-
 
 db = Database()
