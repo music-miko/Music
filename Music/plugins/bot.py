@@ -46,14 +46,21 @@ async def start(_, message: Message):
             elif deep_cmd.startswith("user"):
                 userid = int(deep_cmd.split("_", 1)[1])
                 userdbs = await db.get_user(userid)
-                songs = userdbs["songs_played"]
+                
+                # Safety check if user isn't in database
+                if not userdbs:
+                    await message.reply_text("This user is not registered in my database.")
+                    return
+
+                # FIXED: Use .get() to prevent KeyErrors for older database entries
+                songs = userdbs.get("songs_played", 0)
                 level = MusicUser.get_user_level(int(songs))
                 to_send = TEXTS.ABOUT_USER.format(
-                    userdbs["user_name"],
-                    userdbs["user_id"],
+                    userdbs.get("user_name", "Unknown User"),
+                    userdbs.get("user_id", userid),
                     level,
                     songs,
-                    userdbs["join_date"],
+                    userdbs.get("join_date", "Unknown"),
                     hellbot.app.mention,
                 )
                 await message.reply_text(
