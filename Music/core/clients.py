@@ -1,4 +1,6 @@
+import asyncio
 from pyrogram import Client
+from pyrogram.errors import FloodWait
 
 from config import Config
 from Music.utils.exceptions import HellBotException
@@ -9,7 +11,7 @@ from .logger import LOGS
 class HellClient(Client):
     def __init__(self):
         self.app = Client(
-            "HellMusic",
+            "ArcMusic",
             api_id=Config.API_ID,
             api_hash=Config.API_HASH,
             bot_token=Config.BOT_TOKEN,
@@ -18,7 +20,7 @@ class HellClient(Client):
         )
 
         self.user1 = Client(
-            "HellClient1",
+            "ArcClient1",
             api_id=Config.API_ID,
             api_hash=Config.API_HASH,
             session_string=Config.HELLBOT_SESSION,
@@ -27,7 +29,7 @@ class HellClient(Client):
 
         session2 = getattr(Config, "HELLBOT_SESSION2", None)
         self.user2 = Client(
-            "HellClient2",
+            "ArcClient2",
             api_id=Config.API_ID,
             api_hash=Config.API_HASH,
             session_string=session2,
@@ -36,7 +38,7 @@ class HellClient(Client):
 
         session3 = getattr(Config, "HELLBOT_SESSION3", None)
         self.user3 = Client(
-            "HellClient3",
+            "ArcClient3",
             api_id=Config.API_ID,
             api_hash=Config.API_HASH,
             session_string=session3,
@@ -55,7 +57,7 @@ class HellClient(Client):
         return self.users[abs(chat_id) % len(self.users)]
 
     async def start(self):
-        LOGS.info("\x3e\x3e\x20\x42\x6f\x6f\x74\x69\x6e\x67\x20\x75\x70\x20\x48\x65\x6c\x6c\x4d\x75\x73\x69\x63\x2e\x2e\x2e")
+        LOGS.info("\x3e\x3e\x20\x42\x6f\x6f\x74\x69\x6e\x67\x20\x75\x70\x20\x54\x65\x61\x6d\x20\x41\x72\x63\x2e\x2e\x2e")
         if Config.BOT_TOKEN:
             await self.app.start()
             me = await self.app.get_me()
@@ -75,12 +77,12 @@ class HellClient(Client):
                 user.username = me.username
                 try:
                     await user.join_chat("ArcBotz")
-                    await user.join_chat("https://t.me/Updates")
+                    await user.join_chat("ArcUpdates")
                 except:
                     pass
                 LOGS.info(f"\x3e\x3e\x20{user.name} (Assistant {i+1}) \x69\x73\x20\x6f\x6e\x6c\x69\x6e\x65\x20\x6e\x6f\x77\x21")
                 
-        LOGS.info("\x3e\x3e\x20\x42\x6f\x6f\x74\x65\x64\x20\x75\x70\x20\x48\x65\x6c\x6c\x4d\x75\x73\x69\x63\x21")
+        LOGS.info("\x3e\x3e\x20\x42\x6f\x6f\x74\x65\x64\x20\x75\x70\x20\x54\x65\x61\x6d\x20\x41\x72\x63\x21")
 
     async def logit(self, hash: str, log: str, file: str = None):
         log_text = f"#{hash.upper()} \n\n{log}"
@@ -93,7 +95,20 @@ class HellClient(Client):
                 await self.app.send_message(
                     Config.LOGGER_ID, log_text, disable_web_page_preview=True
                 )
+        except FloodWait as e:
+            # Safely handle Telegram's rate limit by sleeping
+            LOGS.warning(f"Logger hit a FloodWait. Sleeping for {e.value} seconds.")
+            await asyncio.sleep(e.value + 1)
+            try:
+                # Retry the log after sleeping
+                if file:
+                    await self.app.send_document(Config.LOGGER_ID, file, caption=log_text)
+                else:
+                    await self.app.send_message(Config.LOGGER_ID, log_text, disable_web_page_preview=True)
+            except Exception:
+                pass
         except Exception as e:
-            raise HellBotException(f"[HellBotException]: {e}")
+            # We log the error locally instead of raising a critical exception that crashes the task
+            LOGS.error(f"Failed to send log to Telegram: {e}")
 
 hellbot = HellClient()
