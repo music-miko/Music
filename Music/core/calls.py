@@ -289,13 +289,15 @@ class HellMusic:
         await self.autoend(chat_id, user_ids)
 
     async def join_gc(self, chat_id: int):
-        assistant = self.get_client(chat_id)
+        # CORRECTED: Use hellbot to get the Pyrogram client, NOT the PyTgCalls instance
+        assistant = hellbot.get_user(chat_id)
         if not assistant:
             raise UserException("[UserException]: No assistant sessions are running.")
             
         try:
             try:
-                get = await hellbot.app.get_chat_member(chat_id, assistant.client.me.id)
+                # Use assistant.id which we stored during startup in clients.py
+                get = await hellbot.app.get_chat_member(chat_id, assistant.id)
             except ChatAdminRequired:
                 raise UserException(
                     f"[UserException]: Bot is not admin in chat {chat_id}"
@@ -311,7 +313,7 @@ class HellMusic:
             chat = await hellbot.app.get_chat(chat_id)
             if chat.username:
                 try:
-                    await assistant.client.join_chat(chat.username)
+                    await assistant.join_chat(chat.username)
                 except UserAlreadyParticipant:
                     pass
                 except Exception as e:
@@ -333,7 +335,7 @@ class HellMusic:
                     )
                     if link.startswith("https://t.me/+"):
                         link = link.replace("https://t.me/+", "https://t.me/joinchat/")
-                    await assistant.client.join_chat(link)
+                    await assistant.join_chat(link)
                     await hell.edit_text("Assistant joined the chat! Enjoy your music!")
                 except UserAlreadyParticipant:
                     pass
