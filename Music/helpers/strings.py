@@ -32,10 +32,10 @@ class TEXTS:
         "**🎶 VC Ping:** {2} ms"
     )
     PLAYING = (
-        "**❆ Now Playing**\n\n"
-        "**♪ Song Name:** {1}\n"
-        "**♪ Duration:** {2}\n"
-        "**♪ Auxed By:** {3}"
+        "![🎶](5938473438468378529) **Now Playing**\n\n"
+        "![🎶](773626993010546707) **Track:** {1}\n"
+        "![🕛](5850317551090800862) **Duration:** {2}\n"
+        "![🙍🏻](6033108709213736873) **Auxed By:** {3}"
     )
     PROFILE = (
         "**{0}\nUser Profile**\n\n"
@@ -48,26 +48,26 @@ class TEXTS:
         "**❆** {7}"
     )
     QUEUE = (
-        "**Added to Queue (#{0})** \n\n"
-        "**» Song Name:** {1}\n"
-        "**» Duration:** {2}\n"
-        "**» Queued By:** {3}"
+        "![➕](5882207227997066107) **Added to Queue (#{0})**\n\n"
+        "![🎶](773626993010546707) **Song Name:** {1}\n"
+        "![🕛](5850317551090800862) **Duration:** {2}\n"
+        "![🙍🏻](6033108709213736873) **Queued By:** {3}"
     )
     SONG_CAPTION = (
-        "**⊸ Title:** [{0}]({1})\n\n"
-        "**⊸ Views:** {2}\n"
-        "**⊸ Duration:** {3}\n"
-        "**⊸ Requested By:** {4}\n\n"
-        "**❆** {5}"
+        "![🎶](5938473438468378529) **Title:** [{0}]({1})\n\n"
+        "![⛱️](6041933986538721961) **Views:** {2}\n"
+        "![🕛](5850317551090800862) **Duration:** {3}\n"
+        "![🙍🏻](6033108709213736873) **Requested By:** {4}\n\n"
+        "![🪶](5456327427795982532) {5}"
     )
     SOURCE = (
-        "**Source 📦:**\n\n"
+        "**Source ![🛜](5388584922975857751):**\n\n"
         "**Note:** \n» The source code is available on GitHub. You can find the link below.\n"
         "» Every project available under Music Bot are open-source and free to use and modify to your needs.\n"
         "» Anyone pretending to be the developer of this bot and selling the code, is a scammer.\n\n"
         "» Please consider giving a star to the repository if you liked the project.\n"
         "» Feel free to contact us if you need any help regarding the source code.\n\n"
-        "❤️🎶 {0}"
+        "![🚀](5195033767969839232) {0}"
     )
     STATS = (
         "**⤞ Server Stats:**\n"
@@ -194,22 +194,22 @@ class TEXTS:
         "Click the button below!"
     )
     HELP_PM = (
-        "**Help ⚙️**\n\n"
+        "**Help** ![⚙️](5339068773301240682)\n\n"
         "» All commands are categorized based on their usability and target users.\n"
         "» You can use these buttons below to navigate each category and get respective commands.\n"
         "» Feel free to contact us if you need any help regarding the bot.\n\n"
-        "❤️🎶 {0}"
+        "![🪶](5456327427795982532) {0}"
     )
     START_GC = (
         "Yeah, I'm alive! "
         "Wanna listen to some music?"
     )
     START_PM = (
-        "**Hello there** {0}**!**\n\n"
+        "![👋](5220049306769170379)**Hello there** {0}**!**\n\n"
         "**I'm** {1} **, a music bot that can play music on Voice Chats.**\n"
         "**Add me to your group and play music freely!**\n\n"
         "» Feel free to dive in, try different commands, and have fun discovering all the possibilities!\n"
         "» Enjoy the music and let us know if you have any suggestions for improvement.\n\n"
-        "❤️🎶 @{2}"
+        "![🪶](5456327427795982532) @{2}"
     )
     PERFORMER = "[ Team Arc ]"
