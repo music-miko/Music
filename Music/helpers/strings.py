@@ -32,7 +32,7 @@ class TEXTS:
         "**🎶 VC Ping:** {2} ms"
     )
     PLAYING = (
-        "**❆** {0}\n\n"
+        "**❆ Now Playing**\n\n"
         "**♪ Song Name:** {1}\n"
         "**♪ Duration:** {2}\n"
         "**♪ Auxed By:** {3}"
