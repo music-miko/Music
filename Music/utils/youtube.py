@@ -12,7 +12,10 @@ from typing import Optional, Any
 import yt_dlp
 from lyricsgenius import Genius
 from pyrogram.types import CallbackQuery
-from youtubesearchpython.__future__ import VideosSearch
+
+# === USING PY-YT ===
+from py_yt import Playlist, VideosSearch
+# ===================
 
 from config import Config
 from Music.core.clients import hellbot
@@ -164,7 +167,6 @@ async def v2_download_process(link: str, video: bool) -> Optional[str]:
     vid = extract_safe_id(link) or link 
     file_id = extract_safe_id(link) or uuid.uuid4().hex[:10]
     
-    # MP3 update
     ext = "mp4" if video else "mp3"
     out_path = Path("downloads") / f"{file_id}.{ext}"
 
@@ -269,6 +271,7 @@ async def yt_dlp_download_video(link: str, format_id: str = None) -> Optional[st
     except Exception as e:
         LOGS.error(f"yt-dlp Video Download Failed (Skipping): {e}")
     return None
+
 # === END API INTEGRATION ===
 
 class YouTube:
@@ -276,7 +279,6 @@ class YouTube:
         self.base = "https://www.youtube.com/watch?v="
         self.listbase = "https://youtube.com/playlist?list="
         self.regex = r"(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|v\/|shorts\/)|youtu\.be\/|youtube\.com\/playlist\?list=)"
-        # Note: API handles actual extraction now, these are fallbacks
         self.yt_playlist_opts = {"extract_flat": True, "quiet": True}
         self.lyrics = Config.LYRICS_API
         try:
@@ -330,11 +332,25 @@ class YouTube:
             LOGS.error(f"Custom Scraper failed: {e}")
         return None
 
+    def _extract_data_sync(self, query: str, limit: int) -> list:
+        opts = {
+            "extract_flat": "in_playlist", 
+            "quiet": True, 
+            "no_warnings": True
+        }
+        if not query.startswith("http"):
+            query = f"ytsearch{limit}:{query}"
+            
+        with yt_dlp.YoutubeDL(opts) as ydl:
+            res = ydl.extract_info(query, download=False)
+            if "entries" in res:
+                return list(res["entries"])
+            return [res]
+
     async def get_data(self, link: str, video_id: bool, limit: int = 1) -> list:
         collection = []
         is_url = link.startswith("http")
         
-        # SECURITY CHECK: If it's a URL, scan it before processing
         if is_url and not is_safe_url(link):
             LOGS.warning(f"Blocked unsafe search URL: {link}")
             return []
@@ -349,36 +365,78 @@ class YouTube:
             yt_url = await self.format_link(link, video_id)
             
         try:
-            results = VideosSearch(yt_url, limit=limit)
+            results = VideosSearch(yt_url, limit=limit, with_live=False)
             res = await results.next()
-            for result in res.get("result", []):
-                vid = result["id"]
-                channel = result.get("channel", {}).get("name", "Unknown")
-                channel_url = result.get("channel", {}).get("link", "")
-                duration = result.get("duration", "0:00")
-                published = result.get("publishedTime", "Unknown")
-                thumbnail = f"https://i.ytimg.com/vi/{vid}/hqdefault.jpg"
-                title = result.get("title", "Unknown")
-                url = result.get("link", f"https://www.youtube.com/watch?v={vid}")
-                views = result.get("viewCount", {}).get("short", "0")
-                context = {
-                    "id": vid,
-                    "ch_link": channel_url,
-                    "channel": channel,
-                    "duration": duration,
-                    "link": url,
-                    "published": published,
-                    "thumbnail": thumbnail,
-                    "title": title,
-                    "views": views,
-                }
-                collection.append(context)
-        except Exception as e:
-            LOGS.error(f"VideosSearch failed: {e}")
+            if res and res.get("result"):
+                for result in res["result"]:
+                    vid = result.get("id")
+                    channel = result.get("channel", {}).get("name", "Unknown")
+                    channel_url = result.get("channel", {}).get("link", "")
+                    duration = result.get("duration", "0:00")
+                    published = result.get("publishedTime", "Unknown")
+                    thumbnail = result.get("thumbnails", [{}])[-1].get("url", f"https://i.ytimg.com/vi/{vid}/hqdefault.jpg").split("?")[0]
+                    title = result.get("title", "Unknown")
+                    url = result.get("link", f"https://www.youtube.com/watch?v={vid}")
+                    views = result.get("viewCount", {}).get("short", "0")
+                    context = {
+                        "id": vid,
+                        "ch_link": channel_url,
+                        "channel": channel,
+                        "duration": duration,
+                        "link": url,
+                        "published": published,
+                        "thumbnail": thumbnail,
+                        "title": title,
+                        "views": views,
+                    }
+                    collection.append(context)
+                    
+        except Exception:
+            LOGS.warning("py-yt search failed, silently using yt-dlp fallback...")
+            try:
+                loop = asyncio.get_event_loop()
+                fallback_data = await loop.run_in_executor(None, self._extract_data_sync, yt_url, limit)
+                
+                for track in fallback_data:
+                    if not track: continue
+                    vid = track.get("id")
+                    if not vid: continue
+                    
+                    dur_sec = track.get("duration")
+                    if dur_sec is not None:
+                        mins, secs = divmod(int(dur_sec), 60)
+                        duration = f"{mins}:{secs:02d}"
+                    else:
+                        duration = "0:00"
+                        
+                    v_count = track.get("view_count", 0)
+                    if v_count:
+                        if v_count >= 1000000:
+                            views = f"{v_count/1000000:.1f}M"
+                        elif v_count >= 1000:
+                            views = f"{v_count/1000:.1f}K"
+                        else:
+                            views = str(v_count)
+                    else:
+                        views = "0"
+
+                    context = {
+                        "id": vid,
+                        "ch_link": track.get("uploader_url", ""),
+                        "channel": track.get("uploader", "Unknown"),
+                        "duration": duration,
+                        "link": f"https://www.youtube.com/watch?v={vid}",
+                        "published": "Unknown",
+                        "thumbnail": f"https://i.ytimg.com/vi/{vid}/hqdefault.jpg",
+                        "title": track.get("title", "Unknown"),
+                        "views": views,
+                    }
+                    collection.append(context)
+            except Exception:
+                pass
             
         return collection[:limit]
 
-    # === ASYNC PLAYLIST EXTRACTION ===
     def _extract_playlist_sync(self, link: str):
         with yt_dlp.YoutubeDL(self.yt_playlist_opts) as ydl:
             results = ydl.extract_info(link, download=False)
@@ -387,15 +445,26 @@ class YouTube:
         return []
 
     async def get_playlist(self, link: str) -> list:
-        # SECURITY CHECK: Block bad URLs before yt-dlp touches them
+        # SECURITY CHECK: Block bad URLs
         if not is_safe_url(link):
             LOGS.warning(f"Blocked unsafe playlist URL: {link}")
             return []
             
         yt_url = await self.format_link(link, False)
+        
+        try:
+            # === FAST PY-YT PLAYLIST EXTRACTION ===
+            plist = await Playlist.get(yt_url)
+            if plist and "videos" in plist:
+                tracks = [video.get("id") for video in plist["videos"] if video.get("id")]
+                if tracks:
+                    return tracks
+        except Exception as e:
+            LOGS.warning(f"py-yt Playlist failed: {e}. Falling back to yt-dlp...")
+
+        # Fallback to background yt-dlp scan if py-yt fails
         loop = asyncio.get_event_loop()
         try:
-            # Runs extraction in a separate thread so the bot doesn't freeze
             playlist = await loop.run_in_executor(None, self._extract_playlist_sync, yt_url)
             return playlist
         except Exception as e:
@@ -418,12 +487,28 @@ class YouTube:
 
     async def send_song(
         self, message: CallbackQuery, rand_key: str, key: int, video: bool = False
-    ) -> dict:
+    ):
         track = Config.SONG_CACHE[rand_key][key]
         hell = await message.message.reply_text("Downloading...")
         await message.message.delete()
+        
+        sent_msg = None
+        thumb_path = None
+        output = None
         try:
-            # Fully removed blocking `requests.get()` thumbnail download
+            try:
+                thumb_path = f"downloads/thumb_{track['id']}_{int(time.time())}.jpg"
+                session = await get_http_session()
+                async with session.get(track["thumbnail"]) as resp:
+                    if resp.status == 200:
+                        async with aiofiles.open(thumb_path, "wb") as f:
+                            await f.write(await resp.read())
+                    else:
+                        thumb_path = None
+            except Exception as e:
+                LOGS.error(f"Async thumb download failed: {e}")
+                thumb_path = None
+
             output = await self.download(track["link"], False, video)
 
             duration_sec = 0
@@ -446,6 +531,7 @@ class YouTube:
                     duration=duration_sec,
                     performer=TEXTS.PERFORMER,
                     title=track["title"],
+                    thumb=thumb_path, 
                 )
             else:
                 sent_msg = await message.message.reply_video(
@@ -459,6 +545,7 @@ class YouTube:
                         hellbot.app.mention,
                     ),
                     duration=duration_sec,
+                    thumb=thumb_path, 
                     supports_streaming=True,
                 )
 
@@ -470,14 +557,16 @@ class YouTube:
             await hell.delete()
         except Exception as e:
             await hell.edit_text(f"**Error:**\n`{e}`")
+            
         try:
             Config.SONG_CACHE.pop(rand_key, None)
             if output and os.path.exists(output): os.remove(output)
+            if thumb_path and os.path.exists(thumb_path): os.remove(thumb_path)
         except Exception:
             pass
             
         return sent_msg
-    
+
     def get_lyrics(self, song: str, artist: str) -> dict:
         context = {}
         if not self.client:
