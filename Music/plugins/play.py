@@ -1,4 +1,5 @@
 import asyncio
+import os
 import random
 
 from pyrogram import filters
@@ -35,24 +36,23 @@ async def play_music(_, message: Message, context: dict):
         except:
             pass
     hell = await message.reply_text("Processing ...")
-    # initialise variables
+    
     video, force, url, tgaud, tgvid = context.values()
     play_limit = formatter.mins_to_secs(f"{Config.PLAY_LIMIT}:00")
 
-    # if the user replied to a message and that message is an audio file
     if tgaud:
         size_check = formatter.check_limit(tgaud.file_size, Config.TG_AUDIO_SIZE_LIMIT)
         if not size_check:
-            return await hell.edit(
-                f"Audio file size exceeds the size limit of {formatter.bytes_to_mb(Config.TG_AUDIO_SIZE_LIMIT)}MB."
-            )
+            return await hell.edit(f"Audio file size exceeds the size limit of {formatter.bytes_to_mb(Config.TG_AUDIO_SIZE_LIMIT)}MB.")
         time_check = formatter.check_limit(tgaud.duration, play_limit)
         if not time_check:
-            return await hell.edit(
-                f"Audio duration limit of {Config.PLAY_LIMIT} minutes exceeded."
-            )
+            return await hell.edit(f"Audio duration limit of {Config.PLAY_LIMIT} minutes exceeded.")
         await hell.edit("Downloading ...")
-        file_path = await hellbot.app.download_media(message.reply_to_message)
+        
+        os.makedirs("downloads", exist_ok=True)
+        safe_name = f"downloads/tg_audio_{message.id}.mp3"
+        file_path = await hellbot.app.download_media(message.reply_to_message, file_name=safe_name)
+        
         context = {
             "chat_id": message.chat.id,
             "user_id": message.from_user.id,
@@ -67,20 +67,19 @@ async def play_music(_, message: Message, context: dict):
         await player.play(hell, context)
         return
 
-    # if the user replied to a message and that message is a video file
     if tgvid:
         size_check = formatter.check_limit(tgvid.file_size, Config.TG_VIDEO_SIZE_LIMIT)
         if not size_check:
-            return await hell.edit(
-                f"Video file size exceeds the size limit of {formatter.bytes_to_mb(Config.TG_VIDEO_SIZE_LIMIT)}MB."
-            )
+            return await hell.edit(f"Video file size exceeds the size limit of {formatter.bytes_to_mb(Config.TG_VIDEO_SIZE_LIMIT)}MB.")
         time_check = formatter.check_limit(tgvid.duration, play_limit)
         if not time_check:
-            return await hell.edit(
-                f"Audio duration limit of {Config.PLAY_LIMIT} minutes exceeded."
-            )
+            return await hell.edit(f"Audio duration limit of {Config.PLAY_LIMIT} minutes exceeded.")
         await hell.edit("Downloading ...")
-        file_path = await hellbot.app.download_media(message.reply_to_message)
+        
+        os.makedirs("downloads", exist_ok=True)
+        safe_name = f"downloads/tg_video_{message.id}.mp4"
+        file_path = await hellbot.app.download_media(message.reply_to_message, file_name=safe_name)
+        
         context = {
             "chat_id": message.chat.id,
             "user_id": message.from_user.id,
@@ -95,7 +94,6 @@ async def play_music(_, message: Message, context: dict):
         await player.play(hell, context)
         return
 
-    # if the user replied to or sent a youtube link
     if url:
         if not ytube.check(url):
             return await hell.edit("Invalid YouTube URL.")
@@ -103,7 +101,7 @@ async def play_music(_, message: Message, context: dict):
             await hell.edit("Processing the playlist ...")
             song_list = await ytube.get_playlist(url)
             if not song_list:
-                return await hell.edit("❌ **No results found for your query. Try searching with different keywords. Failed to process query.**")
+                return await hell.edit("❌ **Failed to processing.**")
             random.shuffle(song_list)
             context = {
                 "user_id": message.from_user.id,
@@ -114,11 +112,11 @@ async def play_music(_, message: Message, context: dict):
         try:
             await hell.edit("Searching ...")
             result = await ytube.get_data(url, False)
-        except Exception as e:
-            return await hell.edit(f"❌ **API search failed:**\n`{e}`")
+        except Exception:
+            return await hell.edit("❌ **Failed to processing.**")
             
         if not result:
-            return await hell.edit("❌ **No results found for your query. Try searching with different keywords. Failed to process query.**")
+            return await hell.edit("❌ **Failed to processing.**")
             
         context = {
             "chat_id": message.chat.id,
@@ -134,16 +132,15 @@ async def play_music(_, message: Message, context: dict):
         await player.play(hell, context)
         return
 
-    # if the user sent a query
     query = message.text.split(" ", 1)[1]
     try:
         await hell.edit("Searching ...")
         result = await ytube.get_data(query, False)
-    except Exception as e:
-        return await hell.edit(f"❌ **API search failed:**\n`{e}`")
+    except Exception:
+        return await hell.edit("❌ **Failed to processing.**")
         
     if not result:
-        return await hell.edit("❌ **No results found for your query. Try searching with different keywords. Failed to process query.**")
+        return await hell.edit("❌ **Failed to processing.**")
         
     context = {
         "chat_id": message.chat.id,
@@ -159,9 +156,7 @@ async def play_music(_, message: Message, context: dict):
     await player.play(hell, context)
 
 
-@hellbot.app.on_message(
-    filters.command(["current", "playing"]) & filters.group & ~Config.BANNED_USERS
-)
+@hellbot.app.on_message(filters.command(["current", "playing"]) & filters.group & ~Config.BANNED_USERS)
 @UserWrapper
 async def playing(_, message: Message):
     chat_id = message.chat.id
@@ -195,9 +190,7 @@ async def playing(_, message: Message):
     Config.PLAYER_CACHE[chat_id] = sent
 
 
-@hellbot.app.on_message(
-    filters.command(["queue", "que", "q"]) & filters.group & ~Config.BANNED_USERS
-)
+@hellbot.app.on_message(filters.command(["queue", "que", "q"]) & filters.group & ~Config.BANNED_USERS)
 @UserWrapper
 async def queued_tracks(_, message: Message):
     hell = await message.reply_text("Getting Queue...")
