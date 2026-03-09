@@ -35,7 +35,7 @@ async def play_music(_, message: Message, context: dict):
             await db.update_user(user_id, "user_name", user_name)
         except:
             pass
-    hell = await message.reply_text("Processing ...")
+    hell = await message.reply_text("<emoji id='5431895003821513760'>❄️</emoji>Processing ...")
     
     video, force, url, tgaud, tgvid = context.values()
     play_limit = formatter.mins_to_secs(f"{Config.PLAY_LIMIT}:00")
@@ -74,7 +74,7 @@ async def play_music(_, message: Message, context: dict):
         time_check = formatter.check_limit(tgvid.duration, play_limit)
         if not time_check:
             return await hell.edit(f"Audio duration limit of {Config.PLAY_LIMIT} minutes exceeded.")
-        await hell.edit("Downloading ...")
+        await hell.edit("<emoji id='5431895003821513760'>❄️</emoji>Downloading ...")
         
         os.makedirs("downloads", exist_ok=True)
         safe_name = f"downloads/tg_video_{message.id}.mp4"
@@ -98,10 +98,10 @@ async def play_music(_, message: Message, context: dict):
         if not ytube.check(url):
             return await hell.edit("Invalid YouTube URL.")
         if "playlist" in url:
-            await hell.edit("Processing the playlist ...")
+            await hell.edit("<emoji id='5431895003821513760'>❄️</emoji>Processing the playlist ...")
             song_list = await ytube.get_playlist(url)
             if not song_list:
-                return await hell.edit("❌ **Failed to processing.**")
+                return await hell.edit("❌ Failed to processing")
             random.shuffle(song_list)
             context = {
                 "user_id": message.from_user.id,
@@ -113,10 +113,10 @@ async def play_music(_, message: Message, context: dict):
             await hell.edit("Searching ...")
             result = await ytube.get_data(url, False)
         except Exception:
-            return await hell.edit("❌ **Failed to processing.**")
+            return await hell.edit("❌ Failed to processing")
             
         if not result:
-            return await hell.edit("❌ **Failed to processing.**")
+            return await hell.edit("❌ Failed to processing")
             
         context = {
             "chat_id": message.chat.id,
@@ -134,13 +134,13 @@ async def play_music(_, message: Message, context: dict):
 
     query = message.text.split(" ", 1)[1]
     try:
-        await hell.edit("Searching ...")
+        await hell.edit("<emoji id='5431895003821513760'>❄️</emoji> Searching ...")
         result = await ytube.get_data(query, False)
     except Exception:
-        return await hell.edit("❌ **Failed to processing.**")
+        return await hell.edit("❌ Failed to processing.")
         
     if not result:
-        return await hell.edit("❌ **Failed to processing.**")
+        return await hell.edit("❌ Failed to processing.")
         
     context = {
         "chat_id": message.chat.id,
