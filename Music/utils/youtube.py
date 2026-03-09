@@ -12,17 +12,12 @@ from typing import Optional, Any
 import yt_dlp
 from lyricsgenius import Genius
 from pyrogram.types import CallbackQuery
-
-# === USING PY-YT ===
 from py_yt import Playlist, VideosSearch
-# ===================
 
 from config import Config
 from Music.core.clients import hellbot
 from Music.core.logger import LOGS
 from Music.helpers.strings import TEXTS
-
-# === API INTEGRATION HELPERS ===
 
 def is_safe_url(text: str) -> bool:
     DANGEROUS_CHARS = [
@@ -173,8 +168,8 @@ async def v2_download_process(link: str, video: bool) -> Optional[str]:
     if out_path.exists() and out_path.stat().st_size > 0:
         return str(out_path)
 
-    api_key = getattr(Config, "API_KEY", None)
-    api_url = getattr(Config, "API_URL", None)
+    api_key = Config.API_KEY
+    api_url = Config.API_URL
     if not api_url or not api_key:
         LOGS.error("API Creds Missing")
         return None
