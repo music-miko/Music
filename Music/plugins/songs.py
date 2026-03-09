@@ -10,9 +10,7 @@ from Music.utils.pages import MakePages
 from Music.utils.youtube import ytube
 
 
-# === BACKGROUND AUTO-DELETE TASK ===
 async def auto_delete_message(message: Message, delay: int):
-    """Wait for the specified delay (in seconds), then delete the message."""
     await asyncio.sleep(delay)
     try:
         await message.delete()
@@ -27,14 +25,18 @@ async def songs(_, message: Message):
     if len(message.command) == 1:
         return await message.reply_text("Nothing given to search.")
     query = message.text.split(None, 1)[1]
-    hell = await message.reply_photo(
-        Config.BLACK_IMG, caption=f"<b><i>Searching</i></b> “`{query}`” ..."
-    )
-    all_tracks = await ytube.get_data(query, False, 10)
     
-    # Safety check to prevent IndexError
+    hell = await message.reply_photo(
+        Config.BLACK_IMG, caption=f"<emoji id='5431895003821513760'>❄️</emoji><b>Searching</b> “`{query}`” ..."
+    )
+    
+    try:
+        all_tracks = await ytube.get_data(query, False, 10)
+    except Exception:
+        return await hell.edit_text("❌ **Failed to processing.**")
+    
     if not all_tracks:
-        return await hell.edit_text("❌ **No results found for your query. Try searching with different keywords.**")
+        return await hell.edit_text("❌ **Failed to processing.**")
         
     rand_key = formatter.gen_key(str(message.from_user.id), 5)
     Config.SONG_CACHE[rand_key] = all_tracks
@@ -49,16 +51,20 @@ async def lyrics(_, message: Message):
         return await message.reply_text("Lyrics module is disabled!")
     lists = message.text.split(" ", 1)
     if not len(lists) == 2:
-        return await message.reply_text("Nothing given to search.")
+        return await message.reply_text("<emoji id='5431895003821513760'>❄️</emoji> Nothing given to search.")
     query = lists[1]
-    hell = await message.reply_photo(
-        Config.BLACK_IMG, caption=f"<b><i>Searching</i></b> “`{query}`” ..."
-    )
-    all_tracks = await ytube.get_data(query, False, 1)
     
-    # Safety check to prevent IndexError
+    hell = await message.reply_photo(
+        Config.BLACK_IMG, caption=f"<emoji id='5431895003821513760'>❄️</emoji><b>Searching</b> “`{query}`” ..."
+    )
+    
+    try:
+        all_tracks = await ytube.get_data(query, False, 1)
+    except Exception:
+        return await hell.edit_text("❌ **Failed to processing.**")
+    
     if not all_tracks:
-        return await hell.edit_text("❌ **No results found for your query.**")
+        return await hell.edit_text("❌ **Failed to processing.**")
         
     track = all_tracks[0]
     title = track["title"]
@@ -67,7 +73,7 @@ async def lyrics(_, message: Message):
     lyrics = ytube.get_lyrics(title, artist)
     
     if not lyrics:
-         return await hell.edit_text("❌ **Failed to fetch lyrics.**")
+         return await hell.edit_text("❌ **Failed to processing.**")
 
     final = f"**⤷ Title:** `{lyrics['title']}`\n\n**⤷ Lyrics:**\n\n{lyrics['lyrics']}"
     if len(final) > 4096:
@@ -97,13 +103,11 @@ async def song_cb(_, cb: CallbackQuery):
     if action == "adl":
         sent_msg = await ytube.send_song(cb, rand_key, key, False)
         if sent_msg:
-            # Trigger background deletion after 300 seconds (5 minutes)
             asyncio.create_task(auto_delete_message(sent_msg, 300))
         return
     elif action == "vdl":
         sent_msg = await ytube.send_song(cb, rand_key, key, True)
         if sent_msg:
-            # Trigger background deletion after 300 seconds (5 minutes)
             asyncio.create_task(auto_delete_message(sent_msg, 300))
         return
     elif action == "close":
