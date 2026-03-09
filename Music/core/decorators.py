@@ -14,11 +14,20 @@ on_mode = ["on", "enable", "yes", "true"]
 def check_mode(func):
     @wraps(func)
     async def decorated(client, message):
+        # Prevent crash if the message is sent by an anonymous admin or channel
+        if message.sender_chat or not message.from_user:
+            return await message.reply_text(
+                "Seems like you are an anonymous admin. Please revert back to normal to use this command."
+            )
+            
         user_id = message.from_user.id
-        if (Config.PRIVATE_MODE).lower in on_mode:
+        
+        # Fixed missing () on .lower() and made sure it converts to string safely
+        if str(Config.PRIVATE_MODE).lower() in on_mode:
             if user_id not in Config.SUDO_USERS:
                 return
-        await func(client, message)
+                
+        return await func(client, message)
 
     return decorated
 
@@ -31,7 +40,7 @@ def AdminWrapper(func):
             await message.delete()
         except:
             pass
-        if message.sender_chat:
+        if message.sender_chat or not message.from_user:
             return await message.reply_text(
                 "Seems like you are an anonymous admin. Please revert back to normal to use this command."
             )
@@ -54,7 +63,7 @@ def AuthWrapper(func):
             await message.delete()
         except:
             pass
-        if message.sender_chat:
+        if message.sender_chat or not message.from_user:
             return await message.reply_text(
                 "Seems like you are an anonymous admin. Please revert back to normal to use this command."
             )
@@ -90,7 +99,7 @@ def UserWrapper(func):
             await message.delete()
         except:
             pass
-        if message.sender_chat:
+        if message.sender_chat or not message.from_user:
             return await message.reply_text(
                 "Seems like you are an anonymous admin. Please revert back to normal to use this command."
             )
@@ -107,7 +116,7 @@ def PlayWrapper(func):
             await message.delete()
         except:
             pass
-        if message.sender_chat:
+        if message.sender_chat or not message.from_user:
             return await message.reply_text(
                 "Seems like you are an anonymous admin. Please revert back to normal to use this command."
             )
