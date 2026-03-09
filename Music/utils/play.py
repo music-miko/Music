@@ -69,9 +69,9 @@ class Player:
         else:
             try:
                 if edit:
-                    await message.edit_text("Downloading ...")
+                    await message.edit_text("<emoji id='5431895003821513760'>❄️</emoji>Downloading ...")
                 else:
-                    await message.reply_text("Downloading ...")
+                    await message.reply_text("<emoji id='5431895003821513760'>❄️</emoji>Downloading ...")
                 file_path = await ytube.download(
                     video_id, True, True if vc_type == "video" else False
                 )
@@ -290,7 +290,7 @@ class Player:
                 LOGS.error(str(e))
                 failed += 1
         await message.edit_text(
-            f"**Added all tracks to queue!** \n\n**Total tracks: `{count}`** \n**Failed: `{failed}`**"
+            f"![➕](5882207227997066107)**Added all tracks to queue!** \n\n**Total tracks: `{count}`** \n**Failed: `{failed}`**"
         )
 
 
